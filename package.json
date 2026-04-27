@@ -1,22 +1,39 @@
 {
-  "name": "vue-track-master",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "vue": "^3.5.32"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.6",
-    "vite": "^8.0.8",
-    "vite-plugin-vue-devtools": "^8.1.1"
-  },
-  "engines": {
-    "node": "^20.19.0 || >=22.12.0"
-  }
+	"name": "vue-track-master",
+	"version": "0.0.1",
+	"private": false,
+	"type": "module",
+	"description": "Extensible Vue 3 component for timeline / track editors (DAW, animation, video, data).",
+	"main": "./dist/vue-track-master.umd.cjs",
+	"module": "./dist/vue-track-master.js",
+	"exports": {
+		".": {
+			"import": "./dist/vue-track-master.js",
+			"require": "./dist/vue-track-master.umd.cjs"
+		},
+		"./style.css": "./dist/vue-track-master.css"
+	},
+	"files": ["dist", "src/lib"],
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"build:lib": "vite build --mode lib",
+		"build:demo": "vite build --mode demo",
+		"preview": "vite preview"
+	},
+	"peerDependencies": {
+		"vue": "^3.4.0"
+	},
+	"dependencies": {
+		"sass": "^1.99.0"
+	},
+	"devDependencies": {
+		"@vitejs/plugin-vue": "^6.0.6",
+		"vite": "^8.0.8",
+		"vite-plugin-vue-devtools": "^8.1.1",
+		"vue": "^3.5.32"
+	},
+	"engines": {
+		"node": "^20.19.0 || >=22.12.0"
+	}
 }
