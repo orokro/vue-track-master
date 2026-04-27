@@ -1,5 +1,5 @@
 /**
- * @file VueTrackMaster — shared jsdoc typedefs.
+ * @file VueTrackMaster - shared jsdoc typedefs.
  *
  * No runtime exports. This file exists so other modules and consumer
  * components can `@typedef {import('@/lib/types').ClipBodyProps} ...`
@@ -9,21 +9,19 @@
  * reshaping anything in this file is a breaking change.
  */
 
-/* ------------------------------------------------------------------ *
- * Geometry & viewport                                                *
- * ------------------------------------------------------------------ */
+/* ----- Geometry & viewport ----- */
 
 /**
  * @typedef {Object} ViewportRange
- * @property {import('./time.js').VTMTime} start - Inclusive.
- * @property {import('./time.js').VTMTime} end   - Exclusive.
+ * @property {import('./time.js').VTMTime} start
+ * @property {import('./time.js').VTMTime} end
  */
 
 /**
  * @typedef {Object} TimeRect
  * @property {import('./time.js').VTMTime} startTime
  * @property {import('./time.js').VTMTime} endTime
- * @property {number} startRow - Optional row index, NaN if track has no rows.
+ * @property {number} startRow
  * @property {number} endRow
  */
 
@@ -35,62 +33,31 @@
  * @property {number} height
  */
 
-/* ------------------------------------------------------------------ *
- * Clip body — the prop contract every consumer-supplied body sees    *
- * ------------------------------------------------------------------ */
+/* ----- Clip body prop contract ----- */
 
 /**
  * Props the library passes to a clip-body component. Raw-data tracks
  * receive the same shape with `clipId === null` and the start/end
  * pinned to the track extent.
  *
- * Note: there is intentionally no `contentScale` prop. Library always
- * presents clips as 1:1 with their stored data; horizontal scaling is
- * a *consumer* operation triggered by `behavior.onClipRescale` on the
- * track definition, where the consumer mutates their own data however
- * they want (stretch note positions, time-stretch audio, pitch-shift,
- * whatever). Library only renders the chrome that drives the gesture.
+ * No `contentScale` prop. Library always presents clips as 1:1 with
+ * their stored data; horizontal scaling is a consumer operation
+ * triggered by `behavior.onClipRescale` on the track definition.
  *
  * @typedef {Object} ClipBodyProps
- *
  * @property {string | null} clipId
- *   Unique id, or null when this body is the implicit raw-track body.
- *
  * @property {string} trackId
- *
  * @property {import('./time.js').VTMTime} startTime
- *   Absolute start of the clip on the timeline. Notes/data inside the
- *   clip are stored in clip-local time; resolve to absolute via
- *   `startTime + localTime`. For raw bodies, the track's min extent.
- *
  * @property {import('./time.js').VTMTime} endTime
- *   Absolute end of the clip. For raw bodies, the track's max extent.
- *
  * @property {import('./time.js').VTMTime} startVisibleTime
- *   max(startTime, viewport.start). Painters that only care about
- *   what's on screen should read this, not startTime.
- *
  * @property {import('./time.js').VTMTime} endVisibleTime
- *   min(endTime, viewport.end).
- *
  * @property {boolean} fullyVisible
- *   True when the entire clip is on screen.
- *
  * @property {number} pixelsPerTick
- *   Current horizontal zoom.
- *
- * @property {number} pixelsPerRow
- *   Effective row height in pixels = global rowHeight * track stretch.
- *   Universal — even continuous tracks (curves, waves) get this; what
- *   a "row" means semantically is up to the body component.
- *
+ * @property {number} pixelsPerRow      Effective row height = global rowHeight * track stretch.
  * @property {boolean} isEditMode
- *   True for raw bodies (always editable) and for clips the user has
- *   tabbed into.
- *
  * @property {boolean} isSelected
- *
  * @property {ClipBodyApi} api
+ * @property {any} state                Per-track reactive state (result of behavior.createState).
  */
 
 /**
@@ -105,8 +72,8 @@
 
 /**
  * @typedef {Object} MarqueeOpts
- * @property {boolean} [additive] - true = shift-held, add to selection.
- * @property {boolean} [toggle]   - true = ctrl-held, toggle membership.
+ * @property {boolean} [additive]
+ * @property {boolean} [toggle]
  */
 
 /**
@@ -118,19 +85,17 @@
 
 /**
  * @typedef {Object} MarqueeRect
- * @property {PixelRect} pixel - Relative to the clip body.
- * @property {TimeRect}  time  - Time + row range.
+ * @property {PixelRect} pixel
+ * @property {TimeRect}  time
  */
 
 /**
  * @typedef {Object} SelectableRef
- * @property {string} kind  - Consumer-defined ('note', 'handle', etc.)
+ * @property {string} kind
  * @property {string} id
  */
 
-/* ------------------------------------------------------------------ *
- * Track header                                                       *
- * ------------------------------------------------------------------ */
+/* ----- Track header ----- */
 
 /**
  * @typedef {Object} TrackHeaderProps
@@ -139,6 +104,8 @@
  * @property {boolean} enabled
  * @property {number} pixelHeight
  * @property {TrackHeaderApi} api
+ * @property {string} [displayName]
+ * @property {any} state                Per-track reactive state.
  */
 
 /**
@@ -146,14 +113,19 @@
  * @property {() => void} toggleCollapsed
  * @property {(v: boolean) => void} setEnabled
  * @property {(rows: number) => void} setRows
- *   Change the data-driven row count (piano roll octaves, data fields).
  * @property {(stretch: number) => void} setStretch
- *   Per-track vertical multiplier. 1.0 = no stretch.
  */
 
-/* ------------------------------------------------------------------ *
- * Track definition                                                   *
- * ------------------------------------------------------------------ */
+/* ----- Track background ----- */
+
+/**
+ * @typedef {Object} TrackBackgroundProps
+ * @property {string} trackId
+ * @property {number} pixelHeight
+ * @property {any} state
+ */
+
+/* ----- Track definition ----- */
 
 /**
  * @typedef {'raw' | 'clips' | 'mixed'} TrackMode
@@ -169,29 +141,23 @@
 
 /**
  * @typedef {Object} TrackDefinition
- *
  * @property {string} kind
- *   Stable identifier for this track type ('curve', 'midi', 'wave').
- *
  * @property {TrackMode} mode
- *
  * @property {Object} components
  * @property {import('vue').Component} components.header
  * @property {import('vue').Component} components.clipBody
  * @property {import('vue').Component} [components.clipChrome]
- *
+ * @property {import('vue').Component} [components.background]
+ *   Optional override for the track's grid renderer. Defaults to the
+ *   library's DefaultTrackBackground (dot + line grid driven by tickDefs).
  * @property {Object} [layout]
  * @property {number} [layout.rows]
- *   Track height expressed in row-units. Editor sets a global rowHeight
- *   (px); track final height is rows * rowHeight * stretch, floored by
- *   minRows * rowHeight. Fractions allowed. For row-semantic tracks
- *   (piano roll, data tables) `rows` is data-driven; for continuous
- *   tracks (curve, wave) it's a height preference (e.g. 8).
  * @property {number} [layout.minRows]
- *   Floor in row-units.
+ * @property {number} [layout.minHeightPx]
+ *   Hard pixel floor independent of rows/rowHeight. Use when a header
+ *   has a controls block that must fit regardless of row count.
  * @property {number} [layout.gutterTop]
  * @property {number} [layout.gutterBottom]
- *
  * @property {Object} [clips]
  * @property {EdgeBehavior} [clips.resizable]
  * @property {EdgeBehavior} [clips.scalable]
@@ -199,33 +165,16 @@
  * @property {boolean} [clips.movable]
  * @property {OverlapPolicy | OverlapResolver} [clips.overlap]
  * @property {boolean} [clips.requiresEditMode]
- *
  * @property {Object} [data]
  * @property {(state: any) => Iterable<any>} [data.items]
  * @property {(item: any) => [import('./time.js').VTMTime, import('./time.js').VTMTime]} [data.range]
- *
  * @property {Object} [behavior]
  * @property {() => any} [behavior.createState]
- *   Factory for per-instance state. Return value is wrapped with
- *   reactive() and passed to header/body components and to every
- *   behavior callback as `state`. Typical shape: a Map keyed by
- *   clipId, with values holding clip contents in clip-local time.
  * @property {Record<string, (state: any, payload: any) => void>} [behavior.commands]
  * @property {ClipSpliceHandler} [behavior.onClipSplice]
- *   Library calls this when the user splices a clip. Consumer must
- *   partition their data; right-half items have local times shifted
- *   by -at. rightClipId is already created in library metadata.
  * @property {ClipRescaleHandler} [behavior.onClipRescale]
- *   Fires when the user drags a scale handle. Consumer decides what
- *   stretch means for their data. Library does not record `ratio`;
- *   the next render shows a 1:1 clip with the consumer's new data.
  * @property {ClipDeleteHandler} [behavior.onClipDelete]
  * @property {ClipDuplicateHandler} [behavior.onClipDuplicate]
- *
- * Note: no onClipMove on the track definition. Move is metadata-only;
- * clip contents in clip-local time follow automatically. For render
- * side effects use the onClipMove composable from clip-hooks.js, or
- * subscribe to the editor's clip:moved event for playback sync.
  */
 
 /**
@@ -278,21 +227,18 @@
  * @property {import('./time.js').VTMTime} [delta]
  */
 
-/* ------------------------------------------------------------------ *
- * Editor-level events — fire regardless of mount state.              *
- * Subscribe via editor.on('clip:moved', fn).                         *
- * ------------------------------------------------------------------ */
+/* ----- Editor-level events ----- */
 
 /**
  * @typedef {Object} EditorEvents
- * @property {(e: { trackId: string, clipId: string, oldStart: import('./time.js').VTMTime, newStart: import('./time.js').VTMTime }) => void} clip:moved
- * @property {(e: { trackId: string, clipId: string }) => void} clip:created
- * @property {(e: { trackId: string, clipId: string }) => void} clip:deleted
- * @property {(e: { trackId: string, leftClipId: string, rightClipId: string, at: import('./time.js').VTMTime }) => void} clip:spliced
- * @property {(e: { trackId: string, clipId: string, oldDuration: import('./time.js').VTMTime, newDuration: import('./time.js').VTMTime }) => void} clip:rescaled
- * @property {(e: { trackId: string, clipId: string | null, mode: 'enter' | 'exit' }) => void} clip:editMode
- * @property {(e: { selection: SelectableRef[] }) => void} selection:changed
- * @property {(e: { viewport: ViewportRange }) => void} viewport:changed
+ * @property {(e: any) => void} clip_moved
+ * @property {(e: any) => void} clip_created
+ * @property {(e: any) => void} clip_deleted
+ * @property {(e: any) => void} clip_spliced
+ * @property {(e: any) => void} clip_rescaled
+ * @property {(e: any) => void} clip_editMode
+ * @property {(e: any) => void} selection_changed
+ * @property {(e: any) => void} viewport_changed
  */
 
 export {};

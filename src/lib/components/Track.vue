@@ -2,13 +2,14 @@
 	Track.vue
 	---------
 	One row in the editor: sticky header on the left, scrollable body
-	on the right. Computes pixel height from layout.rows + stretch +
-	the editor's global rowHeight, floored by minRows.
+	on the right. Computes pixel height from rows + stretch + the
+	editor's rowHeight, floored by minRows and minHeightPx.
 
-	Mode behavior:
-	  - 'raw'    -> single full-width body (no chrome, isEditMode=true)
-	  - 'clips'  -> list of Clip wrappers, no raw body
-	  - 'mixed'  -> raw body underneath, clips on top
+	Body stack (back to front):
+	  1. background  - track grid (dots + lines), library default or
+	                   consumer-supplied via def.components.background
+	  2. raw clip    - 'raw' / 'mixed' modes only; full-width chrome-less
+	  3. explicit clips - 'clips' / 'mixed' modes
 -->
 <script setup>
 
@@ -16,10 +17,11 @@ import { computed } from 'vue';
 import { useEditor } from '../composables/use-editor.js';
 import Clip from './Clip.vue';
 import DefaultHeader from './DefaultHeader.vue';
+import DefaultTrackBackground from './DefaultTrackBackground.vue';
 
 const props = defineProps({
-	track: { type: Object, required: true },     // { id, def, name?, collapsed?, enabled?, stretch?, rows? }
-	clips: { type: Array, default: () => [] },   // [{ id, start, end, name? }]
+	track: { type: Object, required: true },
+	clips: { type: Array, default: () => [] },
 });
 
 const editor = useEditor();
@@ -30,18 +32,23 @@ const rows = computed(() =>
 	props.track.rows ?? def.value.layout?.rows ?? 8);
 const minRows = computed(() =>
 	def.value.layout?.minRows ?? 4);
+const minHeightPx = computed(() =>
+	def.value.layout?.minHeightPx ?? 0);
 const stretch = computed(() => props.track.stretch ?? 1);
 const collapsed = computed(() => !!props.track.collapsed);
 const enabled = computed(() => props.track.enabled !== false);
 
 const pixelHeight = computed(() => {
-	if (collapsed.value) return Math.max(24, minRows.value * editor.rowHeight.value);
+	if (collapsed.value) return Math.max(24, minHeightPx.value);
 	const natural = rows.value * editor.rowHeight.value * stretch.value;
-	const floor = minRows.value * editor.rowHeight.value;
-	return Math.max(natural, floor);
+	const rowFloor = minRows.value * editor.rowHeight.value;
+	return Math.max(natural, rowFloor, minHeightPx.value);
 });
 
 const bodyWidthPx = computed(() => editor.totalContentWidthPx.value);
+
+// Per-track reactive state (created lazily by the editor context).
+const state = computed(() => editor.getTrackState(props.track.id, def.value));
 
 const headerApi = {
 	toggleCollapsed() { props.track.collapsed = !props.track.collapsed; },
@@ -51,6 +58,8 @@ const headerApi = {
 };
 
 const HeaderComp = computed(() => def.value.components.header || DefaultHeader);
+const BackgroundComp = computed(() =>
+	def.value.components.background || DefaultTrackBackground);
 
 const headerProps = computed(() => ({
 	trackId: props.track.id,
@@ -59,13 +68,19 @@ const headerProps = computed(() => ({
 	pixelHeight: pixelHeight.value,
 	api: headerApi,
 	displayName: props.track.name || '',
+	state: state.value,
+}));
+
+const backgroundProps = computed(() => ({
+	trackId: props.track.id,
+	pixelHeight: pixelHeight.value,
+	state: state.value,
 }));
 
 const mode = computed(() => def.value.mode);
 const showRaw = computed(() => mode.value === 'raw' || mode.value === 'mixed');
 const showClips = computed(() => mode.value === 'clips' || mode.value === 'mixed');
 
-// Implicit full-width raw body - mounted as one anonymous chrome-less clip.
 const rawClip = computed(() => ({
 	id: `${props.track.id}__raw`,
 	start: 0,
@@ -78,18 +93,25 @@ const rawClip = computed(() => ({
 	<div
 		class="vtm-track"
 		:class="{ 'vtm-track--collapsed': collapsed, 'vtm-track--disabled': !enabled }"
-		:style="{ height: pixelHeight + 'px' }"
 	>
-		<div class="vtm-track__header" :style="{ width: editor.headerWidth.value + 'px' }">
+		<div
+			class="vtm-track__header"
+			:style="{ width: editor.headerWidth.value + 'px', height: pixelHeight + 'px' }"
+		>
 			<component :is="HeaderComp" v-bind="headerProps" />
 		</div>
-		<div class="vtm-track__body" :style="{ width: bodyWidthPx + 'px' }">
+		<div
+			class="vtm-track__body"
+			:style="{ width: bodyWidthPx + 'px', height: pixelHeight + 'px' }"
+		>
+			<component :is="BackgroundComp" v-bind="backgroundProps" />
 			<Clip
 				v-if="showRaw"
 				:clip="rawClip"
 				:track-id="track.id"
 				:track-def="def"
 				:pixel-height="pixelHeight"
+				:state="state"
 				:raw-body="true"
 			/>
 			<template v-if="showClips">
@@ -100,6 +122,7 @@ const rawClip = computed(() => ({
 					:track-id="track.id"
 					:track-def="def"
 					:pixel-height="pixelHeight"
+					:state="state"
 				/>
 			</template>
 		</div>
@@ -108,7 +131,7 @@ const rawClip = computed(() => ({
 <style lang="scss" scoped>
 
 .vtm-track {
-	display: contents; /* CSS grid parent provides the row layout */
+	display: contents;
 
 	&__header {
 		position: sticky;
@@ -125,9 +148,7 @@ const rawClip = computed(() => ({
 		overflow: hidden;
 	}
 
-	&--disabled {
-		opacity: 0.6;
-	}
+	&--disabled { opacity: 0.6; }
 }
 
 </style>

@@ -1,47 +1,45 @@
 <!--
 	App.vue (demo)
 	--------------
-	Demo harness for VueTrackMaster. Spins up a few tracks of different
-	kinds with hardcoded clips. Verifies:
-	  - root component mounts
-	  - timeline renders ticks
-	  - tracks render with sticky headers
-	  - clips render at correct positions
-	  - default vs custom headers
-	  - default chrome vs raw bodies (mixed mode)
-	  - scroll/zoom (mouse wheel, ctrl/shift/alt modifiers)
+	Demo harness. Mounts a piano roll, a drum track, and two curve
+	tracks. Verifies:
+	  - layered headers (controls block + grow region)
+	  - dynamic row count via header api.setRows (octave toggle, drum
+	    pick) re-derives track height
+	  - minHeightPx keeps controls block visible when rows = 0
+	  - custom track background (piano octave banding) layered over
+	    the default grid
 -->
 <script setup>
 
 import { ref } from 'vue';
 import { VueTrackMaster, musicTicks } from '@/lib/index.js';
+import { PianoRollTrack } from '@/demo/tracks/piano/PianoRollTrack.js';
+import { DrumTrack } from '@/demo/tracks/drum/DrumTrack.js';
 import { CurveTrack } from '@/demo/tracks/curve/CurveTrack.js';
-import { MidiTrack } from '@/demo/tracks/midi/MidiTrack.js';
 
 const DURATION = 32 * 3840;
 
 const tracks = ref([
-	{ id: 't-curve-1', def: CurveTrack, name: 'Pitch Bend', stretch: 1.0 },
-	{ id: 't-midi-1',  def: MidiTrack,  name: 'Bass' },
-	{ id: 't-midi-2',  def: MidiTrack,  name: 'Lead' },
-	{ id: 't-curve-2', def: CurveTrack, name: 'Filter Cutoff' },
+	{ id: 't-piano', def: PianoRollTrack, name: 'Lead', stretch: 1.0 },
+	{ id: 't-drum',  def: DrumTrack,      name: 'Drums' },
+	{ id: 't-cv-1',  def: CurveTrack,     name: 'Filter Cutoff' },
+	{ id: 't-cv-2',  def: CurveTrack,     name: 'Pitch Bend' },
 ]);
 
 const clipsByTrack = ref({
-	't-curve-1': [
-		{ id: 'c-cv1-a', start: 0,           end: 8 * 3840,  name: 'Intro' },
-		{ id: 'c-cv1-b', start: 12 * 3840,   end: 24 * 3840, name: 'Drop' },
+	't-piano': [
+		{ id: 'p-a', start: 0,           end: 8 * 3840,  name: 'Clip #0' },
+		{ id: 'p-b', start: 8 * 3840,    end: 16 * 3840, name: 'Clip #1' },
+		{ id: 'p-c', start: 20 * 3840,   end: 28 * 3840, name: 'Clip #2' },
 	],
-	't-midi-1': [
-		{ id: 'c-mid1-a', start: 0,         end: 16 * 3840, name: 'A' },
-		{ id: 'c-mid1-b', start: 16 * 3840, end: 32 * 3840, name: 'B' },
+	't-drum': [
+		{ id: 'd-a', start: 0,         end: 32 * 3840, name: 'Beat' },
 	],
-	't-midi-2': [
-		{ id: 'c-mid2-a', start: 4 * 3840,  end: 12 * 3840, name: 'Hook' },
-		{ id: 'c-mid2-b', start: 16 * 3840, end: 20 * 3840 },
-		{ id: 'c-mid2-c', start: 22 * 3840, end: 30 * 3840, name: 'Outro' },
+	't-cv-1': [
+		{ id: 'cv1-a', start: 4 * 3840, end: 16 * 3840, name: 'Sweep' },
 	],
-	't-curve-2': [],
+	't-cv-2': [],
 });
 
 const ticks = musicTicks();

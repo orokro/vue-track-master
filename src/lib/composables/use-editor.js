@@ -7,29 +7,27 @@
  *   - zoom state (pixelsPerTick, rowHeight)
  *   - layout dims (headerWidth, totalDuration)
  *   - tickDefs (for snap + ruler)
+ *   - per-track reactive state (lazily created from createState)
  *
- * Mutation helpers are also returned (setZoom, setRowHeight, etc.).
  * Library components inject this directly; consumer components can
- * `useEditor()` from outside to read viewport / zoom / etc.
+ * useEditor() from outside to read viewport / zoom / etc.
  */
 
-import { inject, provide, readonly, ref, computed, shallowRef } from 'vue';
+import { inject, provide, reactive, readonly, ref, computed, shallowRef } from 'vue';
 
 export const EDITOR_CTX = Symbol('vtm:editor');
 
 /**
  * @typedef {Object} EditorOptions
- * @property {number} duration       Total content length in ticks.
- * @property {number} pixelsPerTick  Initial horizontal zoom.
- * @property {number} rowHeight      Initial vertical zoom (px per row unit).
- * @property {number} headerWidth    Px width of the sticky header column.
- * @property {number} timelineHeight Px height of the timeline ruler.
+ * @property {number} duration
+ * @property {number} pixelsPerTick
+ * @property {number} rowHeight
+ * @property {number} headerWidth
+ * @property {number} timelineHeight
  * @property {import('../time.js').TickDef[]} tickDefs
  */
 
 /**
- * Create the editor context. Called once by VueTrackMaster.
- * Returns the context AND provides it for descendants.
  * @param {EditorOptions} opts
  */
 export function provideEditor(opts) {
@@ -40,8 +38,6 @@ export function provideEditor(opts) {
 	const timelineHeight = ref(opts.timelineHeight);
 	const tickDefs = shallowRef(opts.tickDefs ?? []);
 
-	// Viewport — driven by the scroll container's scrollLeft / clientWidth.
-	// VueTrackMaster wires the scroll listener and pokes these refs.
 	const scrollLeft = ref(0);
 	const viewportWidthPx = ref(0);
 
@@ -51,12 +47,6 @@ export function provideEditor(opts) {
 
 	const totalContentWidthPx = computed(() => duration.value * pixelsPerTick.value);
 
-	/**
-	 * Anchor-zoom horizontally: scale pixelsPerTick while keeping the time
-	 * under `anchorPx` (relative to the scroll container's left edge) fixed.
-	 * @param {number} factor      Multiplier (>1 = zoom in).
-	 * @param {number} anchorPx    Mouse X relative to the scroll container.
-	 */
 	function zoomXAt(factor, anchorPx) {
 		const oldPpt = pixelsPerTick.value;
 		const newPpt = clamp(oldPpt * factor, 1e-6, 1000);
@@ -71,34 +61,31 @@ export function provideEditor(opts) {
 
 	function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+	const trackStates = new Map();
+	function getTrackState(trackId, def) {
+		if (trackStates.has(trackId)) return trackStates.get(trackId);
+		const factory = def && def.behavior && def.behavior.createState;
+		const seed = factory ? factory() : {};
+		const wrapped = reactive(seed);
+		trackStates.set(trackId, wrapped);
+		return wrapped;
+	}
+	function dropTrackState(trackId) {
+		trackStates.delete(trackId);
+	}
+
 	const ctx = {
-		// state (refs - keep mutable internally, expose readonly to consumers later if needed)
-		duration,
-		pixelsPerTick,
-		rowHeight,
-		headerWidth,
-		timelineHeight,
-		tickDefs,
-		scrollLeft,
-		viewportWidthPx,
-
-		// derived
-		viewportStart,
-		viewportEnd,
-		totalContentWidthPx,
-
-		// actions
-		zoomXAt,
-		zoomY,
+		duration, pixelsPerTick, rowHeight, headerWidth, timelineHeight,
+		tickDefs, scrollLeft, viewportWidthPx,
+		viewportStart, viewportEnd, totalContentWidthPx,
+		getTrackState, dropTrackState,
+		zoomXAt, zoomY,
 	};
 
 	provide(EDITOR_CTX, ctx);
 	return ctx;
 }
 
-/**
- * Inject the editor context. Throws if used outside a VueTrackMaster.
- */
 export function useEditor() {
 	const ctx = inject(EDITOR_CTX, null);
 	if (!ctx) {
@@ -107,10 +94,6 @@ export function useEditor() {
 	return ctx;
 }
 
-/**
- * Read-only viewport info. Useful for consumer components that need
- * to know the visible range without exposing zoom mutators.
- */
 export function useViewport() {
 	const ctx = useEditor();
 	return {

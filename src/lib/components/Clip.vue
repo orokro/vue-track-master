@@ -21,6 +21,7 @@ const props = defineProps({
 	trackDef: { type: Object, required: true },   // TrackDefinition
 	pixelHeight: { type: Number, required: true },
 	rawBody:  { type: Boolean, default: false },  // implicit raw body (no chrome)
+	state:    { type: Object, default: null },    // per-track reactive state
 });
 
 const editor = useEditor();
@@ -61,6 +62,7 @@ const bodyProps = computed(() => ({
 	isEditMode: props.rawBody,                     // raw bodies always editable
 	isSelected: false,                             // TODO
 	api: bodyApi,
+	state: props.state,
 }));
 
 const ChromeComp = computed(() => props.trackDef.components.clipChrome || DefaultClipChrome);
